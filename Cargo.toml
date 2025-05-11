@@ -12,3 +12,15 @@ keywords     = ["asynchronous", "communication"]
 categories   = ["async", "communication", "web"]
 
 [dependencies]
+
+[lints.clippy]
+cargo    = "warn"
+nursery  = "warn"
+pedantic = "warn"
+
+multiple_crate_versions = { level = "allow", priority = 1 }
+option_if_let_else      = { level = "allow", priority = 1 }
+
+[lints.rust]
+unsafe_code       = "forbid"
+unstable_features = "forbid"
