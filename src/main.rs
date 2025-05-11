@@ -149,6 +149,12 @@ impl Api {
         to_resp(resp_future).await
     }
 
+    /// Send read receipt event.
+    #[oai(path = "/receive", method = "post")]
+    async fn receive(&self, Json(body): Json<Receive>, signal: Signal<'_, '_>) -> ResultPoem {
+        to_resp(signal.receive(&body.recipient, body.timestamp)).await
+    }
+
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/send", method = "post")]
     async fn send(&self, Json(body): Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
@@ -197,6 +203,12 @@ struct React {
     group: Option<String>,
     emoji: String,
     author: String,
+    timestamp: u64,
+}
+
+#[derive(Object)]
+struct Receive {
+    recipient: String,
     timestamp: u64,
 }
 

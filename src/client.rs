@@ -12,6 +12,9 @@ trait Signal {
         targetTimestamp: u64,
     ) -> Result<Value, ErrorObjectOwned>;
 
+    #[method(name = "sendReceipt", param_kind = map)]
+    fn receive(&self, recipient: &str, targetTimestamp: u64) -> Result<Value, ErrorObjectOwned>;
+
     #[method(name = "send", param_kind = map)]
     fn send(
         &self,
