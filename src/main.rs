@@ -138,21 +138,25 @@ impl Api {
     async fn react(&self, Json(body): Json<React>, signal: Signal<'_, '_>) -> ResultPoem {
         validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
 
-        let resp_future = signal.react(
-            body.recipient.as_deref(),
-            body.group.as_deref(),
-            &body.emoji,
-            &body.author,
-            body.timestamp,
-        );
-
-        to_resp(resp_future).await
+        signal
+            .react(
+                body.recipient.as_deref(),
+                body.group.as_deref(),
+                &body.emoji,
+                &body.author,
+                body.timestamp,
+            )
+            .try_into_empty_response()
+            .await
     }
 
     /// Send read receipt event.
     #[oai(path = "/receive", method = "post")]
     async fn receive(&self, Json(body): Json<Receive>, signal: Signal<'_, '_>) -> ResultPoem {
-        to_resp(signal.receive(&body.recipient, body.timestamp)).await
+        signal
+            .receive(&body.recipient, body.timestamp)
+            .try_into_empty_response()
+            .await
     }
 
     /// Send a message to `signal-cli` daemon.
@@ -167,14 +171,15 @@ impl Api {
             .map(|attachement| format!("data:image/jpeg;base64,{attachement}"))
             .collect();
 
-        let resp_future = signal.send(
-            body.recipient.as_deref(),
-            body.group.as_deref(),
-            &body.message,
-            &attachments,
-        );
-
-        to_resp(resp_future).await
+        signal
+            .send(
+                body.recipient.as_deref(),
+                body.group.as_deref(),
+                &body.message,
+                &attachments,
+            )
+            .try_into_empty_response()
+            .await
     }
 }
 
@@ -220,14 +225,16 @@ struct Send {
     attachments: Option<Vec<String>>,
 }
 
-/// Convert result into HTTP response object.
-async fn to_resp<T, F>(f: F) -> ResultPoem
-where
-    F: Future<Output = Result<T, jsonrpsee::core::client::Error>>,
-{
-    if let Err(error) = f.await {
-        Err(InternalServerError(error))
-    } else {
-        Ok(())
+trait TryIntoEmptyResponse {
+    async fn try_into_empty_response(self) -> ResultPoem;
+}
+
+impl<T, F: Future<Output = Result<T, jsonrpsee::core::client::Error>>> TryIntoEmptyResponse for F {
+    async fn try_into_empty_response(self) -> ResultPoem {
+        if let Err(error) = self.await {
+            Err(InternalServerError(error))
+        } else {
+            Ok(())
+        }
     }
 }
