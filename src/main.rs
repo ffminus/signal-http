@@ -1,5 +1,11 @@
+mod codec;
+mod transport;
+
+use std::sync::Arc;
+
 use clap::Parser;
 use color_eyre::eyre::Result;
+use jsonrpsee::ws_client::WsClient;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -36,6 +42,23 @@ fn main() -> Result<()> {
         .block_on(main_async(Args::parse()))
 }
 
-async fn main_async(_args: Args) -> Result<()> {
+async fn main_async(args: Args) -> Result<()> {
+    // Interface to communicate with `signal-cli` daemon over JSON-RPC
+    let _signal = Arc::new(connect(&args.daemon).await?);
+
     Ok(())
+}
+
+/// Establish JSON-RPC connection to `signal-cli` daemon.
+async fn connect(addr: &str) -> Result<WsClient> {
+    use futures_util::stream::StreamExt;
+    use jsonrpsee::async_client::ClientBuilder;
+    use tokio::net::TcpStream;
+    use tokio_util::codec::Decoder;
+
+    use self::transport::{Receiver, Sender};
+
+    let (sink, stream) = codec::Codec.framed(TcpStream::connect(addr).await?).split();
+
+    Ok(ClientBuilder::default().build_with_tokio(Sender::new(sink), Receiver::new(stream)))
 }
