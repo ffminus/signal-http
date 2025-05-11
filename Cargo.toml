@@ -12,6 +12,8 @@ keywords     = ["asynchronous", "communication"]
 categories   = ["async", "communication", "web"]
 
 [dependencies]
+serde_json = "1.0" # JSON serialization
+
 color-eyre   = { version = "0.6.4" , default-features = false } # Application error handling
 futures-util = { version = "0.3.31", default-features = false } # Stream trait
 tracing      = { version = "0.1.41", default-features = false } # Logs and traces
@@ -22,6 +24,9 @@ tokio-util = { version = "0.7.15", features = ["codec", "net"] }    # Codecs and
 
 # JSON-RPC
 jsonrpsee = { version = "0.25.1", default-features = false, features = ["async-client", "macros", "ws-client"] } 
+
+# HTTP client
+reqwest = { version = "0.12.15", default-features = false, features = ["json"] } 
 
 # Logging consumer
 tracing-subscriber = { version = "0.3.19", default-features = false, features = ["fmt"] }  
