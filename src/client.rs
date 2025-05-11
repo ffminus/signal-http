@@ -2,6 +2,16 @@ use serde_json::Value;
 
 #[jsonrpsee::proc_macros::rpc(client)]
 trait Signal {
+    #[method(name = "sendReaction", param_kind = map)]
+    fn react(
+        &self,
+        recipient: Option<&str>,
+        groupId: Option<&str>,
+        emoji: &str,
+        targetAuthor: &str,
+        targetTimestamp: u64,
+    ) -> Result<Value, ErrorObjectOwned>;
+
     #[method(name = "send", param_kind = map)]
     fn send(
         &self,

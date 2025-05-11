@@ -133,6 +133,22 @@ type ResultPoem = poem::Result<()>;
 
 #[poem_openapi::OpenApi]
 impl Api {
+    /// Send emoji reaction to a message.
+    #[oai(path = "/react", method = "post")]
+    async fn react(&self, Json(body): Json<React>, signal: Signal<'_, '_>) -> ResultPoem {
+        validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
+
+        let resp_future = signal.react(
+            body.recipient.as_deref(),
+            body.group.as_deref(),
+            &body.emoji,
+            &body.author,
+            body.timestamp,
+        );
+
+        to_resp(resp_future).await
+    }
+
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/send", method = "post")]
     async fn send(&self, Json(body): Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
@@ -173,6 +189,15 @@ fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPo
     }
 
     Ok(())
+}
+
+#[derive(Object)]
+struct React {
+    recipient: Option<String>,
+    group: Option<String>,
+    emoji: String,
+    author: String,
+    timestamp: u64,
 }
 
 #[derive(Object)]
