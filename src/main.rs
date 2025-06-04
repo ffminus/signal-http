@@ -179,6 +179,29 @@ impl Api {
             .try_into_empty_response()
             .await
     }
+
+    /// Match API of `bbernhard/signal-cli-rest-api` for compatibility.
+    #[oai(path = "/v2/send", method = "post")]
+    async fn send_compat(&self, Json(mut b): Json<SendCompat>, sig: Signal<'_, '_>) -> ResultPoem {
+        let Some(recipient) = b.recipients.pop() else {
+            return fail("Missing message recipient");
+        };
+
+        if !b.recipients.is_empty() {
+            return fail("Multi-recipient messages are not supported");
+        }
+
+        // Adapt payload to match crate API
+        let body = Send {
+            message: b.message,
+            recipient: Some(recipient),
+            group: None,
+            attachments: None,
+        };
+
+        // Forward call to `send` endpoint to centralize logic
+        self.send(Json(body), sig).await
+    }
 }
 
 #[expect(clippy::result_large_err)]
@@ -229,6 +252,12 @@ struct Send {
     group: Option<String>,
     message: String,
     attachments: Option<Vec<String>>,
+}
+
+#[derive(Object)]
+struct SendCompat {
+    recipients: Vec<String>,
+    message: String,
 }
 
 trait TryIntoEmptyResponse {
