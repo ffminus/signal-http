@@ -185,21 +185,27 @@ impl Api {
 fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPoem {
     use base64::Engine;
 
-    let fail = |m| poem::error::Error::from_string(m, poem::http::StatusCode::UNPROCESSABLE_ENTITY);
-
     if recipient.is_none() && group.is_none() {
-        return Err(fail("Provide a recipient or group"));
+        return fail("Provide a recipient or group");
     }
 
     if let Some(group) = group {
         if let Ok(bytes) = base64::engine::general_purpose::URL_SAFE.decode(group) {
             if bytes.len() != 32 {
-                return Err(fail("Invalid group id"));
+                return fail("Invalid group id");
             }
         }
     }
 
     Ok(())
+}
+
+#[expect(clippy::result_large_err)]
+fn fail(msg: &str) -> ResultPoem {
+    use poem::error::Error;
+    use poem::http::StatusCode;
+
+    Err(Error::from_string(msg, StatusCode::UNPROCESSABLE_ENTITY))
 }
 
 #[derive(Object)]
