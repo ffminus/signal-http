@@ -27,13 +27,13 @@ tokio        = { version = "1.44"  , features = ["rt-multi-thread"] } # Async ru
 tokio-util   = { version = "0.7.15", features = ["codec", "net"] }    # Codecs and bytes
 
 # JSON-RPC
-jsonrpsee = { version = "0.25.1", default-features = false, features = ["async-client", "macros", "ws-client"] } 
+jsonrpsee = { version = "0.25.1", default-features = false, features = ["async-client", "macros", "ws-client"] }
 
 # HTTP client
-reqwest = { version = "0.12.15", default-features = false, features = ["json"] } 
+reqwest = { version = "0.12.15", default-features = false, features = ["json"] }
 
 # Logging consumer
-tracing-subscriber = { version = "0.3.19", default-features = false, features = ["fmt"] }  
+tracing-subscriber = { version = "0.3.19", default-features = false, features = ["fmt"] }
 
 [lints.clippy]
 cargo    = "warn"
