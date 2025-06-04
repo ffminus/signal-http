@@ -7,7 +7,6 @@ use std::sync::Arc;
 use clap::Parser;
 use color_eyre::eyre::Result;
 use jsonrpsee::ws_client::WsClient;
-use poem::error::InternalServerError;
 use poem_openapi::Object;
 use poem_openapi::payload::Json;
 
@@ -233,7 +232,7 @@ trait TryIntoEmptyResponse {
 impl<T, F: Future<Output = Result<T, jsonrpsee::core::client::Error>>> TryIntoEmptyResponse for F {
     async fn try_into_empty_response(self) -> ResultPoem {
         if let Err(error) = self.await {
-            Err(InternalServerError(error))
+            Err(poem::error::InternalServerError(error))
         } else {
             Ok(())
         }
