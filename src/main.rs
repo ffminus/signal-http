@@ -4,7 +4,6 @@ mod transport;
 
 use std::sync::Arc;
 
-use base64::Engine;
 use clap::Parser;
 use color_eyre::eyre::Result;
 use jsonrpsee::ws_client::WsClient;
@@ -185,6 +184,8 @@ impl Api {
 
 #[expect(clippy::result_large_err)]
 fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPoem {
+    use base64::Engine;
+
     let fail = |m| poem::error::Error::from_string(m, poem::http::StatusCode::UNPROCESSABLE_ENTITY);
 
     if recipient.is_none() && group.is_none() {
