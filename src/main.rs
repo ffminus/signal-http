@@ -202,6 +202,17 @@ impl Api {
         // Forward call to `send` endpoint to centralize logic
         self.send(Json(body), sig).await
     }
+
+    /// Send a message to `signal-cli` daemon.
+    #[oai(path = "/typing", method = "post")]
+    async fn typing(&self, Json(b): Json<Typing>, signal: Signal<'_, '_>) -> ResultPoem {
+        validate_recipients(b.recipient.as_deref(), b.group.as_deref())?;
+
+        signal
+            .send_typing(b.recipient.as_deref(), b.group.as_deref(), b.stop)
+            .try_into_empty_response()
+            .await
+    }
 }
 
 #[expect(clippy::result_large_err)]
@@ -258,6 +269,13 @@ struct Send {
 struct SendCompat {
     recipients: Vec<String>,
     message: String,
+}
+
+#[derive(Object)]
+struct Typing {
+    recipient: Option<String>,
+    group: Option<String>,
+    stop: bool,
 }
 
 trait TryIntoEmptyResponse {

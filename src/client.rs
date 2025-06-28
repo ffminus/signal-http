@@ -24,6 +24,14 @@ trait Signal {
         attachments: &[String],
     ) -> Result<Value, ErrorObjectOwned>;
 
+    #[method(name = "sendTyping", param_kind = map)]
+    fn send_typing(
+        &self,
+        recipient: Option<&str>,
+        groupId: Option<&str>,
+        stop: bool,
+    ) -> Result<Value, ErrorObjectOwned>;
+
     #[subscription(name = "subscribeReceive" => "receive", unsubscribe = "unsubscribeReceive", item = Value, param_kind = map)]
     async fn subscribe_receive(&self) -> SubscriptionResult;
 }
