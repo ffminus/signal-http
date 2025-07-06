@@ -9,8 +9,8 @@ use std::sync::Arc;
 use clap::Parser;
 use color_eyre::eyre::Result;
 use jsonrpsee::ws_client::WsClient;
-use poem_openapi::Object;
 use poem_openapi::payload::Json;
+use poem_openapi::{Enum, Object};
 
 use self::client::SignalClient as Client;
 
@@ -136,16 +136,10 @@ impl Api {
     /// Send emoji reaction to a message.
     #[oai(path = "/react", method = "post")]
     async fn react(&self, body: Json<React>, signal: Signal<'_, '_>) -> ResultPoem {
-        validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
+        let (person, group) = parse_recipient(&body.recipient)?;
 
         signal
-            .react(
-                body.recipient.as_deref(),
-                body.group.as_deref(),
-                &body.emoji,
-                &body.author,
-                body.timestamp,
-            )
+            .react(person, group, &body.emoji, &body.author, body.timestamp)
             .await
             .or_internal_server_error()?;
 
@@ -166,7 +160,7 @@ impl Api {
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/send", method = "post")]
     async fn send(&self, body: Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
-        validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
+        let (person, group) = parse_recipient(&body.recipient)?;
 
         let attachments: Vec<_> = body
             .attachments
@@ -177,12 +171,7 @@ impl Api {
             .collect();
 
         signal
-            .send(
-                body.recipient.as_deref(),
-                body.group.as_deref(),
-                &body.message,
-                &attachments,
-            )
+            .send(person, group, &body.message, &attachments)
             .await
             .or_internal_server_error()?;
 
@@ -203,8 +192,10 @@ impl Api {
         // Adapt payload to match crate API
         let body = Send {
             message: b.message,
-            recipient: Some(recipient),
-            group: None,
+            recipient: Recipient {
+                kind: RecipientKind::Person,
+                value: recipient,
+            },
             attachments: None,
         };
 
@@ -215,10 +206,10 @@ impl Api {
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/typing", method = "post")]
     async fn typing(&self, b: Json<Typing>, signal: Signal<'_, '_>) -> ResultPoem {
-        validate_recipients(b.recipient.as_deref(), b.group.as_deref())?;
+        let (person, group) = parse_recipient(&b.recipient)?;
 
         signal
-            .send_typing(b.recipient.as_deref(), b.group.as_deref(), b.stop)
+            .send_typing(person, group, b.stop)
             .await
             .or_internal_server_error()?;
 
@@ -227,22 +218,24 @@ impl Api {
 }
 
 #[expect(clippy::result_large_err)]
-fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPoem {
+fn parse_recipient(recipient: &Recipient) -> ResultPoem<(Option<&str>, Option<&str>)> {
     use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE;
 
-    if recipient.is_none() && group.is_none() {
-        return unprocessable("Provide a recipient or group");
-    }
+    match recipient.kind {
+        RecipientKind::Person => Ok((Some(&recipient.value), None)),
+        RecipientKind::Group => {
+            let Ok(bytes) = URL_SAFE.decode(&recipient.value) else {
+                return unprocessable("Group id is not valid base64");
+            };
 
-    if let Some(group) = group {
-        if let Ok(bytes) = base64::engine::general_purpose::URL_SAFE.decode(group) {
             if bytes.len() != 32 {
                 return unprocessable("Invalid group id");
             }
+
+            Ok((None, Some(&recipient.value)))
         }
     }
-
-    Ok(())
 }
 
 #[expect(clippy::result_large_err)]
@@ -255,8 +248,7 @@ fn unprocessable<T>(msg: &str) -> ResultPoem<T> {
 
 #[derive(Object)]
 struct React {
-    recipient: Option<String>,
-    group: Option<String>,
+    recipient: Recipient,
     emoji: String,
     author: String,
     timestamp: u64,
@@ -270,8 +262,7 @@ struct Receive {
 
 #[derive(Object)]
 struct Send {
-    recipient: Option<String>,
-    group: Option<String>,
+    recipient: Recipient,
     message: String,
     attachments: Option<Vec<String>>,
 }
@@ -284,9 +275,21 @@ struct SendCompat {
 
 #[derive(Object)]
 struct Typing {
-    recipient: Option<String>,
-    group: Option<String>,
+    recipient: Recipient,
     stop: bool,
+}
+
+#[derive(Object)]
+struct Recipient {
+    kind: RecipientKind,
+    value: String,
+}
+
+#[derive(Enum)]
+#[oai(rename_all(lowercase))]
+enum RecipientKind {
+    Person,
+    Group,
 }
 
 trait OrInternalServerError<T> {
