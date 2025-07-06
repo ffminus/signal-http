@@ -127,7 +127,7 @@ type Signal<'a, 'p> = poem::web::Data<&'a Arc<WsClient>>;
 struct Api;
 
 /// Empty response of fallible handler.
-type ResultPoem = poem::Result<()>;
+type ResultPoem<T = ()> = poem::Result<T>;
 
 #[poem_openapi::OpenApi]
 impl Api {
@@ -236,7 +236,7 @@ fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPo
 }
 
 #[expect(clippy::result_large_err)]
-fn unprocessable(msg: &str) -> ResultPoem {
+fn unprocessable<T>(msg: &str) -> ResultPoem<T> {
     use poem::error::Error;
     use poem::http::StatusCode;
 
