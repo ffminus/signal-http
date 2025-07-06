@@ -2,6 +2,8 @@ mod client;
 mod codec;
 mod transport;
 
+use core::error::Error;
+
 use std::sync::Arc;
 
 use clap::Parser;
@@ -144,8 +146,10 @@ impl Api {
                 &body.author,
                 body.timestamp,
             )
-            .try_into_empty_response()
             .await
+            .or_internal_server_error()?;
+
+        Ok(())
     }
 
     /// Send read receipt event.
@@ -153,8 +157,10 @@ impl Api {
     async fn receive(&self, body: Json<Receive>, signal: Signal<'_, '_>) -> ResultPoem {
         signal
             .receive(&body.recipient, body.timestamp)
-            .try_into_empty_response()
             .await
+            .or_internal_server_error()?;
+
+        Ok(())
     }
 
     /// Send a message to `signal-cli` daemon.
@@ -177,8 +183,10 @@ impl Api {
                 &body.message,
                 &attachments,
             )
-            .try_into_empty_response()
             .await
+            .or_internal_server_error()?;
+
+        Ok(())
     }
 
     /// Match API of `bbernhard/signal-cli-rest-api` for compatibility.
@@ -211,8 +219,10 @@ impl Api {
 
         signal
             .send_typing(b.recipient.as_deref(), b.group.as_deref(), b.stop)
-            .try_into_empty_response()
             .await
+            .or_internal_server_error()?;
+
+        Ok(())
     }
 }
 
@@ -279,16 +289,13 @@ struct Typing {
     stop: bool,
 }
 
-trait TryIntoEmptyResponse {
-    async fn try_into_empty_response(self) -> ResultPoem;
+trait OrInternalServerError<T> {
+    #[expect(clippy::result_large_err)]
+    fn or_internal_server_error(self) -> ResultPoem<T>;
 }
 
-impl<T, F: Future<Output = Result<T, jsonrpsee::core::client::Error>>> TryIntoEmptyResponse for F {
-    async fn try_into_empty_response(self) -> ResultPoem {
-        if let Err(error) = self.await {
-            Err(poem::error::InternalServerError(error))
-        } else {
-            Ok(())
-        }
+impl<T, E: 'static + core::marker::Send + Sync + Error> OrInternalServerError<T> for Result<T, E> {
+    fn or_internal_server_error(self) -> ResultPoem<T> {
+        self.map_err(|error| poem::error::InternalServerError(error))
     }
 }
