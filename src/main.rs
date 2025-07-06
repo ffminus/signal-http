@@ -133,7 +133,7 @@ type ResultPoem = poem::Result<()>;
 impl Api {
     /// Send emoji reaction to a message.
     #[oai(path = "/react", method = "post")]
-    async fn react(&self, Json(body): Json<React>, signal: Signal<'_, '_>) -> ResultPoem {
+    async fn react(&self, body: Json<React>, signal: Signal<'_, '_>) -> ResultPoem {
         validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
 
         signal
@@ -150,7 +150,7 @@ impl Api {
 
     /// Send read receipt event.
     #[oai(path = "/receive", method = "post")]
-    async fn receive(&self, Json(body): Json<Receive>, signal: Signal<'_, '_>) -> ResultPoem {
+    async fn receive(&self, body: Json<Receive>, signal: Signal<'_, '_>) -> ResultPoem {
         signal
             .receive(&body.recipient, body.timestamp)
             .try_into_empty_response()
@@ -159,12 +159,13 @@ impl Api {
 
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/send", method = "post")]
-    async fn send(&self, Json(body): Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
+    async fn send(&self, body: Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
         validate_recipients(body.recipient.as_deref(), body.group.as_deref())?;
 
         let attachments: Vec<_> = body
             .attachments
-            .unwrap_or_else(Vec::new)
+            .as_deref()
+            .unwrap_or(&[])
             .iter()
             .map(|attachement| format!("data:image/jpeg;base64,{attachement}"))
             .collect();
@@ -205,7 +206,7 @@ impl Api {
 
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/typing", method = "post")]
-    async fn typing(&self, Json(b): Json<Typing>, signal: Signal<'_, '_>) -> ResultPoem {
+    async fn typing(&self, b: Json<Typing>, signal: Signal<'_, '_>) -> ResultPoem {
         validate_recipients(b.recipient.as_deref(), b.group.as_deref())?;
 
         signal
