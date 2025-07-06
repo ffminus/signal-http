@@ -185,11 +185,11 @@ impl Api {
     #[oai(path = "/v2/send", method = "post")]
     async fn send_compat(&self, Json(mut b): Json<SendCompat>, sig: Signal<'_, '_>) -> ResultPoem {
         let Some(recipient) = b.recipients.pop() else {
-            return fail("Missing message recipient");
+            return unprocessable("Missing message recipient");
         };
 
         if !b.recipients.is_empty() {
-            return fail("Multi-recipient messages are not supported");
+            return unprocessable("Multi-recipient messages are not supported");
         }
 
         // Adapt payload to match crate API
@@ -221,13 +221,13 @@ fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPo
     use base64::Engine;
 
     if recipient.is_none() && group.is_none() {
-        return fail("Provide a recipient or group");
+        return unprocessable("Provide a recipient or group");
     }
 
     if let Some(group) = group {
         if let Ok(bytes) = base64::engine::general_purpose::URL_SAFE.decode(group) {
             if bytes.len() != 32 {
-                return fail("Invalid group id");
+                return unprocessable("Invalid group id");
             }
         }
     }
@@ -236,7 +236,7 @@ fn validate_recipients(recipient: Option<&str>, group: Option<&str>) -> ResultPo
 }
 
 #[expect(clippy::result_large_err)]
-fn fail(msg: &str) -> ResultPoem {
+fn unprocessable(msg: &str) -> ResultPoem {
     use poem::error::Error;
     use poem::http::StatusCode;
 
