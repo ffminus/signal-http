@@ -159,7 +159,9 @@ impl Api {
 
     /// Send a message to `signal-cli` daemon.
     #[oai(path = "/send", method = "post")]
-    async fn send(&self, body: Json<Send>, signal: Signal<'_, '_>) -> ResultPoem {
+    async fn send(&self, body: Json<Send>, signal: Signal<'_, '_>) -> ResultPoem<Json<SendResp>> {
+        use serde_json::from_value;
+
         let (person, group) = parse_recipient(&body.recipient)?;
 
         let attachments: Vec<_> = body
@@ -170,17 +172,21 @@ impl Api {
             .map(|attachement| format!("data:image/jpeg;base64,{attachement}"))
             .collect();
 
-        signal
+        let value = signal
             .send(person, group, &body.message, &attachments)
             .await
             .or_internal_server_error()?;
 
-        Ok(())
+        Ok(Json(from_value(value).or_internal_server_error()?))
     }
 
     /// Match API of `bbernhard/signal-cli-rest-api` for compatibility.
     #[oai(path = "/v2/send", method = "post")]
-    async fn send_compat(&self, Json(mut b): Json<SendCompat>, sig: Signal<'_, '_>) -> ResultPoem {
+    async fn send_compat(
+        &self,
+        Json(mut b): Json<SendCompat>,
+        sig: Signal<'_, '_>,
+    ) -> ResultPoem<Json<SendResp>> {
         let Some(recipient) = b.recipients.pop() else {
             return unprocessable("Missing message recipient");
         };
@@ -265,6 +271,11 @@ struct Send {
     recipient: Recipient,
     message: String,
     attachments: Option<Vec<String>>,
+}
+
+#[derive(Object, serde::Deserialize)]
+struct SendResp {
+    timestamp: u64,
 }
 
 #[derive(Object)]
