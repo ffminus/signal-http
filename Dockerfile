@@ -1,5 +1,5 @@
 # Base image with compiler
-FROM rust:1.86.0-slim AS build
+FROM rust:1.88.0-slim AS build
 
 # Directory where application is built
 WORKDIR /app
