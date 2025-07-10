@@ -226,12 +226,12 @@ impl Api {
 #[expect(clippy::result_large_err)]
 fn parse_recipient(recipient: &Recipient) -> ResultPoem<(Option<&str>, Option<&str>)> {
     use base64::Engine;
-    use base64::engine::general_purpose::URL_SAFE;
+    use base64::engine::general_purpose::STANDARD;
 
     match recipient.kind {
         RecipientKind::Person => Ok((Some(&recipient.value), None)),
         RecipientKind::Group => {
-            let Ok(bytes) = URL_SAFE.decode(&recipient.value) else {
+            let Ok(bytes) = STANDARD.decode(&recipient.value) else {
                 return unprocessable("Group id is not valid base64");
             };
 
